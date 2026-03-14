@@ -9,10 +9,8 @@ import { computeVariable as computeVariablePyodide } from './pyodide';
 import ScoreExplorer from './components/ScoreExplorer';
 
 export default function App() {
-  const [commentEmbeddings, setCommentEmbeddings] = useState([]);
-  const [participantEmbeddings, setParticipantEmbeddings] = useState([]);
+  const [embeddings, setEmbeddings] = useState([]);
   const [comments, setComments] = useState([]);
-  const [participants, setParticipants] = useState([]);
   const [selectedComment, setSelectedComment] = useState(null);
   const [loaded, setLoaded] = useState(false);
   const [scores, setScores] = useState(null);
@@ -22,13 +20,9 @@ export default function App() {
   const [numVotes, setNumVotes] = useState(0);
 
   async function computeVariable({ name, anchors, relevanceScoring }) {
-    const { comment_scores, participant_scores, confidence } =
-      await computeVariablePyodide(name, anchors, relevanceScoring);
+    const { scores, confidence } = await computeVariablePyodide(name, anchors, relevanceScoring);
 
-    setScores({
-      commentScores: comment_scores,
-      participantScores: participant_scores,
-    });
+    setScores(scores);
     setConfidence(confidence);
   }
 
@@ -54,17 +48,13 @@ export default function App() {
   }
 
   const onConversationLoaded = (
-    commentEmbeddings,
-    participantEmbeddings,
+    embeddings,
     comments,
-    participants,
     numParticipants,
     numVotes
   ) => {
-    setCommentEmbeddings(commentEmbeddings);
-    setParticipantEmbeddings(participantEmbeddings);
+    setEmbeddings(embeddings);
     setComments(comments);
-    setParticipants(participants);
     setLoaded(true);
     setSelectedComment(0);
     setNumParticipants(numParticipants);
@@ -89,20 +79,16 @@ export default function App() {
         )}
 
         <ScatterPlotPanel
-          commentEmbeddings={commentEmbeddings}
-          participantEmbeddings={participantEmbeddings}
+          embeddings={embeddings}
           comments={comments}
-          participants={participants}
-          commentScores={scores?.commentScores}
-          participantScores={scores?.participantScores}
+          scores={scores}
           onSelectComment={setSelectedComment}
-          onSelectParticipant={() => {}}
         />
 
         {scores ? (
           <ScoreExplorer
             comments={comments}
-            commentScores={scores?.commentScores}
+            scores={scores}
             confidence={confidence}
             onSelectComment={setSelectedComment}
             onBack={() => setScores(null)}
@@ -111,7 +97,7 @@ export default function App() {
           <VariablePanel
             anchors={anchors}
             comments={comments}
-            scores={scores?.commentScores}
+            scores={scores}
             onCompute={computeVariable}
             onUpdateRating={updateRating}
           />
