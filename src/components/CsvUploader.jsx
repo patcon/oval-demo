@@ -25,10 +25,16 @@ export default function CsvUploader({ onLoaded }) {
         const parsed = await loadH5adFile(buffer);
 
         // Pass parsed data to Pyodide — bypass read_polis() which requires author-id
-        pyodide.globals.set('_h5ad_comment_texts', parsed.comments.map(c => c.body));
+        pyodide.globals.set(
+          '_h5ad_comment_texts',
+          parsed.comments.map((c) => c.body)
+        );
         pyodide.globals.set('_h5ad_n_obs', parsed.participantIds.length);
         pyodide.globals.set('_h5ad_n_var', parsed.commentIds.length);
-        pyodide.globals.set('_h5ad_votes_flat', parsed.votesMatrix.flat().map(v => v === null ? NaN : v));
+        pyodide.globals.set(
+          '_h5ad_votes_flat',
+          parsed.votesMatrix.flat().map((v) => (v === null ? NaN : v))
+        );
 
         jsonProxy = await pyodide.runPythonAsync(`
 import numpy as np
@@ -81,7 +87,8 @@ conversation = read_polis(
     "/votes.csv",
 )
 
-embeddings, _ = decompose_votes(conversation.votes_matrix.transpose(), num_components=2)
+comment_embeddings, _ = decompose_votes(conversation.votes_matrix.transpose(), num_components=2)
+participant_embeddings, _ = decompose_votes(conversation.votes_matrix, num_components=2)
 
 comments_list = [
     {
@@ -94,19 +101,44 @@ comments_list = [
     for i, comment in enumerate(conversation.comments)
 ]
 
+participants_list = [
+    {
+        "id": participant.id,
+        "num_votes": np.count_nonzero(conversation.votes_matrix[i, :]),
+    }
+    for i, participant in enumerate(conversation.users)
+]
+
 json = {
-    "embeddings": embeddings.tolist(),
+    "comment_embeddings": comment_embeddings.tolist(),
+    "participant_embeddings": participant_embeddings.tolist(),
     "comments": comments_list,
+    "participants": participants_list,
     "num_participants": len(conversation.users),
     "num_votes": len(conversation.votes_matrix.nonzero()[0]),
 }
 json
 `);
       }
-      const {embeddings, comments, num_participants, num_votes} = jsonProxy.toJs();
+
+      const {
+        comment_embeddings,
+        participant_embeddings,
+        comments,
+        participants,
+        num_participants,
+        num_votes,
+      } = jsonProxy.toJs();
       jsonProxy.destroy();
 
-      onLoaded(embeddings, comments, num_participants, num_votes);
+      onLoaded(
+        comment_embeddings,
+        participant_embeddings,
+        comments,
+        participants,
+        num_participants,
+        num_votes
+      );
     } catch (err) {
       console.error(err);
       alert('Error loading file. Check console.');
@@ -146,7 +178,9 @@ json
       {format === 'csv' ? (
         <>
           <label className={fileInputClass}>
-            {commentsFile ? commentsFile.name : 'Drag or click to upload comments.csv'}
+            {commentsFile
+              ? commentsFile.name
+              : 'Drag or click to upload comments.csv'}
             <input
               type="file"
               accept=".csv"
@@ -156,7 +190,9 @@ json
           </label>
 
           <label className={fileInputClass}>
-            {votesFile ? votesFile.name : 'Drag or click to upload participant-votes.csv'}
+            {votesFile
+              ? votesFile.name
+              : 'Drag or click to upload participant-votes.csv'}
             <input
               type="file"
               accept=".csv"
